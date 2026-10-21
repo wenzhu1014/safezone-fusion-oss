@@ -1,0 +1,267 @@
+# PUBLIC DEMO CONFIGURATION ONLY
+# Example identifiers, regions and thresholds; not a validated deployment configuration.
+# Mock detection is the default. No actuator or broker is enabled by this file.
+
+# SafeZone Fusion v0.6
+# 第一阶段：授权小车停入等待窗口 + 安全检测 + 放行/停机决策
+# 第二阶段：人工取餐/存餐时，若设备挡住格口，先清场再避让
+# 第三阶段：业务/传感器/执行器接口与 orchestrator
+# 第四阶段：mock adapters 与运行循环
+# 第五阶段：视觉前置接口
+# 第六阶段：OpenCV ArUco marker 生成与图片检测原型
+
+authorized_carts:
+  CART_0001:
+    enabled: true
+    marker_id: 123
+    marker_type: aruco  # 当前使用 OpenCV DICT_6X6_250，ID 范围 0-249
+    description: 示例授权无人配送小车 A
+    allowed_marker_area:
+      # 柜体坐标系，单位：米
+      x_min: -0.60
+      x_max: 0.60
+      y_min: 0.20
+      y_max: 1.80
+      z_min: 0.20
+      z_max: 2.00
+    required_stable_frames: 5
+    allow_timeout_sec: 10.0
+
+waiting_window:
+  # 小车应先自主停入该窗口；柜体只验收，不做实时远程引导
+  x_min: -0.35
+  x_max: 0.35
+  distance_min: 0.25
+  distance_max: 0.70
+  yaw_abs_max_deg: 10.0
+  stable_speed_max_mps: 0.01
+  # v0.8.2-B：当前实测斜角可识别 marker ID，但角点/中心点会明显抖动，
+  # 不能把 ArUco 角点抖动直接当作小车没停稳。原型默认使用 angled_marker：
+  # 连续看到同一个授权码 + 没有大幅漂移 + 持续一小段时间，即认为小车停稳。
+  # 可选：angled_marker / anchored_position / speed / smoothed_speed / jitter / relaxed。
+  # anchored_position 是 v0.8.4 新增的位置历史模式：不是只看瞬时速度，而是看
+  # marker 是否在一段时间内一直留在锚点范围内。
+  stability_mode: angled_marker
+  stable_marker_frames: 5
+  angled_anchor_drift_max_px: 48.0
+  # v0.8.3：额外要求 marker 中心连续低速一小段时间，防止极慢移动被
+  # “连续可见 + 未大幅漂移”误判为已停稳。斜角抖动仍由 48px anchor
+  # 宽限吸收；真实慢挪由 center_v 门控拦截。
+  angled_still_center_speed_max_px_s: 5.0
+  angled_still_time_sec: 0.8
+  # 户外抗风/轻微机械晃动：如果 marker 围绕锚点小范围来回抖，虽然瞬时
+  # center_v 可能超过 5px/s，也允许继续累计 still timer；但一旦发生
+  # 持续离开锚点的大漂移，仍会按未停稳处理。
+  wind_sway_anchor_drift_max_px: 8.0
+  wind_sway_jitter_max_px: 3.0
+  wind_sway_min_anchor_age_sec: 0.3
+  # v0.8.4 anchored_position 模式参数。可通过 demo_live_camera.py
+  # --stability-mode anchored_position 试运行对比。
+  position_hold_time_sec: 1.0
+  position_anchor_drift_max_px: 8.0
+  position_history_radius_max_px: 3.0
+  position_center_speed_warn_px_s: 5.0
+  stable_center_jitter_max_px: 8.0
+  stable_center_speed_max_px_s: 20.0
+  stable_anchor_drift_max_px: 12.0
+  stable_time_sec: 0.5
+
+safety:
+  # stop_zone：人体/肢体/未知障碍物进入即停
+  stop_zone:
+    x_min: -0.50
+    x_max: 0.50
+    y_min: 0.20
+    y_max: 1.80
+    z_min: 0.00
+    z_max: 0.80
+  # warning_zone：进入后预警/减速，但未必立即停
+  warning_zone:
+    x_min: -0.75
+    x_max: 0.75
+    y_min: 0.10
+    y_max: 1.90
+    z_min: 0.00
+    z_max: 1.10
+  pir_stop_when_unknown_in_stop_zone: true
+  clearing_time_sec: 1.0
+
+verified_cart_region:
+  # marker 通过授权后，marker 附近该范围内点云可视为授权小车本体，不作为未知障碍物。
+  # v0.7 进一步要求 marker 同时位于 docking_corridor 内，避免“码在远处/偏处”时过度豁免。
+  x_radius: 0.30
+  y_radius: 0.45
+  z_radius: 0.45
+
+docking_corridor:
+  # 授权小车本体豁免只在该接驳走廊内生效。
+  # 人体/肢体不受此豁免影响，进入 stop_zone 仍立即停机。
+  x_min: -0.35
+  x_max: 0.35
+  distance_min: 0.25
+  distance_max: 0.70
+  yaw_abs_max_deg: 10.0
+
+human_access:
+  # 设备二维移动机构的可选避让位，单位：米。v0.2 仿真只输出 MOVE_TO_PARK，不真实控制电机。
+  park_position:
+    x: 0.0
+    y: 0.20
+  # 目标格口被设备遮挡的简化判断阈值：接驳头中心离格口中心小于该距离则认为遮挡。
+  slot_block_radius_m: 0.12
+  require_warning_zone_clear_before_move: false
+
+voice:
+  allow_cart: 授权小车已停入接驳等待区，允许接驳设备移动。
+  stop_human: 检测到人员或肢体进入安全区域，设备已停止。
+  stop_obstacle: 检测到未知障碍物进入安全区域，设备已停止。
+  warning: 请勿靠近设备，当前处于接驳安全监控区域。
+  wait_cart: 请小车停入指定接驳等待区并保持静止。
+  human_step_back: 设备即将移动，请后退至安全线外。
+  human_move_away: 安全区域已清空，设备开始避让。
+  human_access_allowed: 设备已停止并锁定，格口已开放，请取餐。
+  human_return_step_back: 设备即将复位，请后退至安全线外。
+
+# Experimental lens integrity self-check (not certified). A covered / glare-blinded /
+# defocused camera produces a frame where "nothing is visible", which a naive
+# detector reads as "safe to dock". This monitor watches the image itself and
+# forces a fail-safe STOP when the camera can no longer be trusted to see a
+# hazard. Runs independent of the fusion engine, close to the sensor.
+lens_health:
+  enabled: true
+  downscale_long_edge: 320       # subsample before stats (cheap; off the response-time critical path)
+  dark_mean_max: 12.0            # mean intensity (0-255) at/below this => covered/dark
+  bright_mean_min: 243.0         # mean at/above this AND ...
+  bright_pixel_value: 250.0      # ... this fraction of pixels >= this value ...
+  bright_pixel_fraction_min: 0.90  # ... => glare/saturated (blinded by light)
+  flat_stddev_max: 4.0           # global stddev at/below this AND ...
+  flat_detail_max: 6.0           # ... Laplacian detail at/below this => flat/defocus/smear
+  enter_frames: 3                # consecutive bad frames to latch BLINDED
+  release_frames: 8              # consecutive healthy frames to clear (slower = safer)
+
+object_detector:
+  # Active object detector backend.
+  # Available built-ins: mock | roi_motion | skin_motion | mediapipe_hand (optional).
+  # mediapipe_hand requires a compatible optional MediaPipe installation.
+  name: mock
+
+roi_motion:
+  # Temporary single-camera real STOP-chain prototype.
+  # This maps motion inside an image ROI to a provisional `hand` object in stop_zone.
+  # It is useful before YOLO/depth is integrated, but is not a final human detector.
+  # min_consecutive: require this many consecutive frames with motion above min_area_px
+  #   before triggering STOP. Reduces false triggers from single-frame reflection/noise.
+  enabled: false
+  roi: [0.30, 0.62, 0.70, 0.95]
+  min_area_px: 1200.0
+  threshold: 28
+  blur_kernel: 5
+  warmup_frames: 5
+  min_consecutive: 3
+  # Occupancy hysteresis + STOP latch (2026-06-22): treat the zone by OCCUPANCY,
+  # not motion. hold_static_occupant keeps a still object detected until removed.
+  # occupied_keep_area_px is the lower 'stay-occupied' threshold (< min_area_px)
+  # so a flat/textureless object whose diff hovers near the threshold does not
+  # flicker. clear_frames_to_release is how many consecutive clear frames are
+  # required before the STOP latch is dropped (slow, safety-biased release).
+  hold_static_occupant: true
+  occupied_keep_area_px: 150.0
+  clear_frames_to_release: 8
+  label: motion   # honest: motion-only detector, routed to UNKNOWN_OBSTACLE (still stops). 'hand'/limb labels are reserved for the semantic mediapipe_hand detector.
+  confidence: 0.75
+  stop_pose:
+    x: 0.0
+    y: 0.4
+    z: 0.4
+  # Illumination robustness + shadow suppression (indoor & outdoor, 2026-06-22).
+  # Compensates uniform brightness changes (cloud/light) and removes cast
+  # shadows, while a texture-preservation gate keeps dark objects (e.g. a person
+  # in dark clothing) from being mistaken for shadow -> no missed detection.
+  illumination:
+    enabled: true
+    compensate_global: true
+    max_global_shift: 60.0
+    suppress_shadow: true
+    shadow_ratio_low: 0.35
+    shadow_ratio_high: 0.92
+    shadow_min_darken: 8.0
+    require_texture_preserved: true   # SAFETY: dark object != shadow
+    texture_flat_thresh: 6.0
+    texture_keep_ratio: 0.45
+
+skin_motion:
+  # Skin-tone gated ROI motion. Same shape as roi_motion but extra HSV check
+  # to reduce false STOPs on screen flicker / paper sway / non-skin movement.
+  enabled: false
+  roi: [0.30, 0.62, 0.70, 0.95]
+  min_area_px: 1500.0
+  motion_threshold: 28
+  blur_kernel: 5
+  warmup_frames: 5
+  label: motion_skin   # honest: skin-gated motion, still not a confirmed hand. Routed to UNKNOWN_OBSTACLE (still stops).
+  confidence: 0.78
+  hsv_lower_a: [0, 30, 60]
+  hsv_upper_a: [20, 170, 255]
+  hsv_lower_b: [160, 30, 60]
+  hsv_upper_b: [179, 170, 255]
+  skin_required: true
+  skin_overlap_ratio_min: 0.18
+  stop_pose:
+    x: 0.0
+    y: 0.4
+    z: 0.4
+
+mediapipe_hand:
+  # Real semantic hand detector (MediaPipe Tasks HandLandmarker, 21-joint skeleton).
+  # Unlike roi_motion/skin_motion this distinguishes an actual hand from generic
+  # motion (paper sway, shadows, reflections). Phase 2 of the detection roadmap.
+  # Uses the new Tasks API (HandLandmarker.detect), which sidesteps the protobuf
+  # conflicts that can affect the legacy mp.solutions API.
+  enabled: false
+  roi: [0.30, 0.62, 0.70, 0.95]   # mirrors roi_motion observation window
+  num_hands: 2
+  min_detection_confidence: 0.5
+  min_hand_presence_confidence: 0.5
+  min_tracking_confidence: 0.5
+  label: hand
+  confidence: 0.75
+  stop_pose:
+    x: 0.0
+    y: 0.4
+    z: 0.4
+
+environment_profiles:
+  indoor:
+    description: 室内/结构稳定场景。更敏感，优先拒绝细微移动。
+    waiting_window:
+      stability_mode: anchored_position
+      position_hold_time_sec: 0.8
+      position_anchor_drift_max_px: 6.0
+      position_history_radius_max_px: 2.5
+      position_center_speed_warn_px_s: 5.0
+      wind_sway_anchor_drift_max_px: 6.0
+      wind_sway_jitter_max_px: 2.5
+  outdoor:
+    description: 户外/轻微风扰场景。容忍原地小晃动，但仍拒绝持续离开锚点。
+    waiting_window:
+      stability_mode: anchored_position
+      position_hold_time_sec: 1.0
+      position_anchor_drift_max_px: 8.0
+      position_history_radius_max_px: 3.0
+      position_center_speed_warn_px_s: 5.0
+      wind_sway_anchor_drift_max_px: 8.0
+      wind_sway_jitter_max_px: 3.0
+
+# Operating-state gate (2026-06-22): startup readiness + frame-rate monitor.
+# Forces fail-safe STOP while warming up (background not yet learned) or while
+# the live FPS drops below the floor the safety distance was computed for.
+operating_state:
+  enabled: true
+  warmup_frames: 15         # frames required before leaving STOP-default startup gate
+  warmup_min_seconds: 0.5   # also require this much wall-clock since first frame
+  expected_fps: 30.0        # FPS the ISO 13855 safety distance was computed for
+  min_fps: 12.0             # below this (sustained) -> degraded -> fail-safe STOP
+  recover_fps: 15.0         # must climb back above this to clear (hysteresis)
+  fps_window: 30
+  degrade_after: 5
+  recover_after: 10

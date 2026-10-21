@@ -1,0 +1,30 @@
+# Build / runtime artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Recorded camera clips and acceptance run outputs — large binary, regenerable.
+captures/
+
+# Runtime safety-signal output (latest state / audit logs). Regenerated each run.
+out/
+
+# Reference / sample marker images and other generated images. Re-create with
+# tools/generate_aruco_marker.py if needed for verification.
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Debug overlay outputs
+debug_*.jpg
+
+# Local env and editor files
+.env
+.idea/
+.vscode/

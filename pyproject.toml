@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77", "wheel", "packaging>=24.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safezone-fusion"
+version = "0.8.4.dev0"
+description = "Experimental camera-assisted docking and hazard-zone decision framework"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "wenzhu1014"}]
+dependencies = [
+  "numpy==2.4.6",
+  "opencv-python==4.13.0.92",
+  "PyYAML==6.0.2",
+  "Pillow==12.3.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["safezone_fusion", "safezone_fusion.*"]
+exclude = ["safezone_fusion.tests", "safezone_fusion.tests.*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+safezone_fusion = ["config.yaml"]

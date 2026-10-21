@@ -1,0 +1,6 @@
+# Versions observed locally during public-candidate verification, Python 3.11.
+# Use one OpenCV distribution in a clean environment.
+numpy==2.4.6
+opencv-python==4.13.0.92
+PyYAML==6.0.2
+Pillow==12.3.0
