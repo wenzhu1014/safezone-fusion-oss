@@ -32,5 +32,5 @@ targeted changes. Repository ownership and linked commits do not establish
 exclusive manual authorship of every line. No users, downloads, stars,
 certification, or production adoption are claimed here.
 
-The proposed MIT license applies to project code published with this candidate.
+The MIT license applies to project code published in this repository.
 Dependencies and separately obtained models retain their own licenses.

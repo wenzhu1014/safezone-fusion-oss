@@ -21,6 +21,9 @@ def obj(label, x=0.0, y=1.0, z=0.4, confidence=1.0):
     return ObjectObservation(label, Pose(x, y, z), confidence)
 
 def main():
+    # Redirected Windows runners may otherwise use a non-Unicode code page.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     config = load_config(ROOT / "config.yaml")
     engine = FusionDecisionEngine(config)
     sm = SafetyStateMachine()

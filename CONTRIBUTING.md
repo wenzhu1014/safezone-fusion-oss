@@ -16,5 +16,5 @@ credentials, deployment identifiers, or private configurations. Use synthetic
 examples when reporting a bug. Claims about real hardware, timing, or detection
 performance need a stated setup and reproducible evidence.
 
-Issues and pull requests are welcome once the candidate is published. Identify
+Issues and pull requests are welcome. Identify
 AI-assisted changes and explain the review and validation you performed.

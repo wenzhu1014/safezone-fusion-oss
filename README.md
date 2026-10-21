@@ -79,7 +79,7 @@ certification or performance claims.
 ## Contributing and licensing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [PROVENANCE.md](PROVENANCE.md), and
-[LICENSE](LICENSE). This candidate proposes the MIT license for the owner's
-project code. AI assistance was used to prepare documentation, packaging,
+[LICENSE](LICENSE). The project code is distributed under the MIT license.
+AI assistance was used to prepare documentation, packaging,
 review, and targeted changes for this public candidate. No adoption, production
 deployment, certification, or benchmark result is claimed without evidence.
